@@ -1,0 +1,353 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "ufJXQ6A9DeHm"
+      },
+      "outputs": [],
+      "source": [
+        "from itertools import combinations\n",
+        "import random"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from itertools import combinations\n",
+        "from collections import defaultdict\n",
+        "\n",
+        "def all_possible_worlds_flexible(n, friends, rivals):\n",
+        "    world_to_number = defaultdict(int)\n",
+        "    number_to_world = defaultdict(list)\n",
+        "    all_cards = [i + 1 for i in range(n)]\n",
+        "    counter = 0\n",
+        "\n",
+        "    # Initialize data structures to track the mapping of worlds to numbers\n",
+        "    world_to_number = {}\n",
+        "    number_to_world = {}\n",
+        "\n",
+        "    # Total number of cards that rivals will hold\n",
+        "    total_rivals_cards = sum(rivals)\n",
+        "\n",
+        "    # Generate all distributions of cards to the players in 'friends' and 'rivals'\n",
+        "    def generate_worlds(cards_left, current_distribution, index, total_distribution):\n",
+        "        nonlocal counter\n",
+        "        if index == len(current_distribution):\n",
+        "            # Once all friends are dealt with, deal all remaining cards to rivals as one group\n",
+        "            if len(cards_left) == total_rivals_cards:\n",
+        "                rival_cards = tuple(sorted(cards_left))\n",
+        "                world = tuple(tuple(sorted(x)) for x in current_distribution) + (rival_cards,)\n",
+        "                world_to_number[world] = counter\n",
+        "                number_to_world[counter] = world\n",
+        "                counter += 1\n",
+        "            return\n",
+        "\n",
+        "        num_cards = total_distribution[index]\n",
+        "        for chosen_cards in combinations(cards_left, num_cards):\n",
+        "            new_cards_left = list(cards_left)\n",
+        "            for card in chosen_cards:\n",
+        "                new_cards_left.remove(card)\n",
+        "            # Create a new distribution for the next recursive call\n",
+        "            new_distribution = current_distribution[:]\n",
+        "            new_distribution[index] = chosen_cards\n",
+        "            # Recursively process the next player\n",
+        "            generate_worlds(new_cards_left, new_distribution, index + 1, total_distribution)\n",
+        "\n",
+        "    # Start the recursive process\n",
+        "    total_players_distribution = friends\n",
+        "    initial_distribution = [()] * len(total_players_distribution)  # Start with empty tuples\n",
+        "    generate_worlds(all_cards, initial_distribution, 0, total_players_distribution)\n",
+        "\n",
+        "    return world_to_number, number_to_world, counter"
+      ],
+      "metadata": {
+        "id": "lCWyaS-bEIQL"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from collections import defaultdict\n",
+        "\n",
+        "def get_suggested_worlds(friends_cards, number_to_world):\n",
+        "    # This dictionary will store the worlds for each friend by index\n",
+        "    friends_worlds = defaultdict(list)\n",
+        "\n",
+        "    # Iterate through all the worlds stored in number_to_world\n",
+        "    for number, world in number_to_world.items():\n",
+        "        # Check each friend's current cards against their portion in each world\n",
+        "        for i, friend_cards in enumerate(friends_cards):\n",
+        "            if set(friend_cards) == set(world[i]):  # If the friend's cards in the world match the given cards\n",
+        "                friends_worlds[i].append(number)  # Store the world number for this friend\n",
+        "\n",
+        "    return friends_worlds"
+      ],
+      "metadata": {
+        "id": "j1nzXjmUENoe"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from collections import defaultdict\n",
+        "\n",
+        "def get_all_possible_worlds_grouped(n, actual_cards, player_number, number_to_world):\n",
+        "    # Create a dictionary to group worlds by the cards of the specified player\n",
+        "    worlds_grouped_by_player = defaultdict(list)\n",
+        "\n",
+        "    # Iterate through each world in the provided number_to_world dictionary\n",
+        "    for world_number, world in number_to_world.items():\n",
+        "        player_cards = world[player_number]  # Adjust for zero-based index\n",
+        "        # Convert player's cards to tuple for consistent key usage\n",
+        "        key = tuple(player_cards)\n",
+        "\n",
+        "        # Group worlds by the cards of the specified player\n",
+        "        worlds_grouped_by_player[key].append(world_number)\n",
+        "\n",
+        "    # Convert grouped worlds from dict to list of lists\n",
+        "    worlds_grouped = list(worlds_grouped_by_player.values())\n",
+        "\n",
+        "    return worlds_grouped"
+      ],
+      "metadata": {
+        "id": "s2cHSiwJEPx4"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def get_edges(player_worlds_numbered):\n",
+        "    edges = defaultdict(list)\n",
+        "    for group in player_worlds_numbered:\n",
+        "        for i in range (len(group)):\n",
+        "            for k in range (len(group)):\n",
+        "                if i != k:\n",
+        "                    edges[group[i]].append(group[k])\n",
+        "    return edges"
+      ],
+      "metadata": {
+        "id": "mZHBGY6fERzR"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def get_graph_matrix(player_worlds_numbered, world_to_number):\n",
+        "    edges = get_edges(player_worlds_numbered, world_to_number)\n",
+        "    result = []\n",
+        "    for i in range (len(edges)):\n",
+        "        tmp = []\n",
+        "        for k in range (len(edges)):\n",
+        "            if k in edges[i]:\n",
+        "                tmp.append(1)\n",
+        "            else:\n",
+        "                tmp.append(0)\n",
+        "        result.append(tmp)\n",
+        "    return result"
+      ],
+      "metadata": {
+        "id": "B__wML28EVQ0"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def check_what_to_delete(suggested, friend, to_delete):\n",
+        "  for group in friend:\n",
+        "    for suggested_world in suggested:\n",
+        "      if suggested_world in group:\n",
+        "        for world in group:\n",
+        "          if world != suggested_world and world not in to_delete:\n",
+        "            to_delete.append(world)"
+      ],
+      "metadata": {
+        "id": "z8XZAA8tEXbo"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def win(edges, real):\n",
+        "    if real in edges:\n",
+        "        return edges[real] == []"
+      ],
+      "metadata": {
+        "id": "VJDMbRtUEZuD"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def delete_world(current, edges, graph):\n",
+        "    for v in edges.keys():\n",
+        "        if current in edges[v]:\n",
+        "            edges[v].remove(current)\n",
+        "    if current in edges.keys():\n",
+        "        del edges[current]\n",
+        "    if graph.has_node(current):\n",
+        "        graph.remove_node(current)\n",
+        "\n",
+        "def turn(current, all_edges, all_graph):\n",
+        "    for i in range(len(all_edges)):\n",
+        "        delete_world(current, all_edges[i], all_graph[i])"
+      ],
+      "metadata": {
+        "id": "VZiYH5AKEeOO"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def generate_real_world_scenario(n, friends, rivals):\n",
+        "    # Generate a list of all cards\n",
+        "    real_world = [i + 1 for i in range(n)]\n",
+        "    random.shuffle(real_world)\n",
+        "\n",
+        "    # Accumulate indices based on the number of cards per friend and rival\n",
+        "    indices = [0]\n",
+        "    for count in friends + rivals:\n",
+        "        indices.append(indices[-1] + count)\n",
+        "\n",
+        "    # Split the shuffled cards among friends and rivals\n",
+        "    hands = [tuple(sorted(real_world[indices[i]:indices[i + 1]])) for i in range(len(indices) - 1)]\n",
+        "\n",
+        "    # Separate hands into friends and rivals\n",
+        "    friends_hands = hands[:len(friends)]\n",
+        "    rivals_hands = hands[len(friends):]\n",
+        "\n",
+        "    # Combine all rival hands into one tuple if needed (depends on how you want to handle rivals)\n",
+        "    if len(rivals_hands) > 1:\n",
+        "        # Flatten the list of tuples for rivals into a single tuple, if they are to be grouped\n",
+        "        combined_rivals = tuple(sorted(sum(rivals_hands, ())))\n",
+        "    else:\n",
+        "        combined_rivals = rivals_hands[0] if rivals_hands else ()\n",
+        "\n",
+        "    # Prepare the full distribution as a tuple\n",
+        "    real = tuple(friends_hands) + (combined_rivals,)\n",
+        "\n",
+        "    return real, tuple(friends_hands)"
+      ],
+      "metadata": {
+        "id": "t54eHWWwEe8C"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def game(n, friends, rivals):\n",
+        "    world_to_number, number_to_world, total_worlds = all_possible_worlds_flexible(n, friends, rivals)\n",
+        "\n",
+        "    real, friends_cards = generate_real_world_scenario(n, friends, rivals)\n",
+        "    real_numbered = world_to_number[real]\n",
+        "\n",
+        "    suggested_worlds = get_suggested_worlds(friends_cards, number_to_world)\n",
+        "\n",
+        "    worlds_grouped = defaultdict(list)\n",
+        "    all_edges = defaultdict(dict)\n",
+        "    all_graph = defaultdict(nx.Graph)\n",
+        "    for i in range(len(friends) + 1):\n",
+        "        worlds_grouped[i] = get_all_possible_worlds_grouped(n, real, i, number_to_world)\n",
+        "        all_edges[i] = get_edges(worlds_grouped[i])\n",
+        "        all_graph[i] = create_graph_from_dict(all_edges[i])\n",
+        "\n",
+        "    all_turns = defaultdict(list)\n",
+        "    for i in range (len(friends)):\n",
+        "        for k in range (len(friends)):\n",
+        "            check_what_to_delete(suggested_worlds[i], worlds_grouped[k], all_turns[i])\n",
+        "\n",
+        "    current = 0\n",
+        "\n",
+        "    while all(not win(all_edges[i], real_numbered) for i in range(len(friends) + len(rivals))):\n",
+        "        for num in range(len(friends)):\n",
+        "            if current < len(all_turns[i]):\n",
+        "                turn(all_turns[i][current], all_edges, all_graph)\n",
+        "        current += 1\n",
+        "\n",
+        "    if any(win(all_edges[i], real_numbered) for i in range(len(friends), len(friends) + len(rivals))):\n",
+        "        return 0\n",
+        "    else:\n",
+        "        return 1"
+      ],
+      "metadata": {
+        "id": "6MHE4lIeEhpK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "def generate_m_games(m, n, friends, rivals):\n",
+        "  result = 0\n",
+        "\n",
+        "  for i in range(m):\n",
+        "    result += game(n, friends, rivals)\n",
+        "\n",
+        "  return result"
+      ],
+      "metadata": {
+        "id": "moDczLA2EkVa"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(\"Input the amount of games: \")\n",
+        "m = int(input())\n",
+        "print(\"Input the number of cards overall: \")\n",
+        "n = int(input())\n",
+        "print(\"Input the amount of cards of friends players divided by space: \")\n",
+        "friends = list(map(int, input().split()))\n",
+        "print(\"Input the amount of cards of rival players divided by space: \")\n",
+        "rivals = list(map(int, input().split()))\n",
+        "\n",
+        "if sum(friends) + sum(rivals) != n:\n",
+        "    print(\"Invalid data\")\n",
+        "    exit(404)\n",
+        "\n",
+        "generate_m_games(m, n, friends, rivals)"
+      ],
+      "metadata": {
+        "id": "ZKAjnxMTEmWL"
+      },
+      "execution_count": null,
+      "outputs": []
+    }
+  ]
+}
